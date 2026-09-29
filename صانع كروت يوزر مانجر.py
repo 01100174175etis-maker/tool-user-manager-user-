@@ -155,26 +155,46 @@ class CardApp:
             raise ValueError(f"{field_name} لا يمكن أن يكون سالبًا.")
         return result
 
+    def _index_to_suffix(self, index, length, charset):
+        if length <= 0:
+            return ""
+        chars = []
+        base = len(charset)
+        while length > 0:
+            index, remainder = divmod(index, base)
+            chars.append(charset[remainder])
+            length -= 1
+        return "".join(reversed(chars))
+
     def _generate_usernames(self, prefix, count, total_length):
         prefix = prefix.strip()
         if not prefix:
             raise ValueError("يجب إدخال بادئة قبل التوليد.")
 
+        count = int(count)
+        total_length = int(total_length)
+
+        if count <= 0:
+            raise ValueError("يجب أن يكون العدد أكبر من صفر.")
+
         if total_length <= len(prefix):
             raise ValueError("الطول الإجمالي يجب أن يكون أكبر من طول البادئة.")
 
         suffix_length = total_length - len(prefix)
-        if suffix_length < 1:
-            raise ValueError("الطول المختار لا يكفي لإضافة أرقام أو أحرف بعد البادئة.")
+        charset = string.ascii_letters + string.digits
+        max_capacity = len(charset) ** suffix_length
 
-        if count > 10 ** suffix_length:
-            raise ValueError("الطول لا يستوعب العدد المطلوب!")
+        if count > max_capacity:
+            raise ValueError(
+                f"الطول الحالي لا يسمح بإنتاج {count} اسم فريد. الحد الأقصى المفترض: {max_capacity}"
+            )
 
-        users = set()
-        while len(users) < count:
-            suffix = "".join(random.choices(string.digits, k=suffix_length))
-            users.add(prefix + suffix)
-        return sorted(users)
+        if count == 1:
+            return [prefix + self._index_to_suffix(random.randrange(max_capacity), suffix_length, charset)]
+
+        selected_indexes = random.sample(range(max_capacity), count)
+        generated = [prefix + self._index_to_suffix(index, suffix_length, charset) for index in selected_indexes]
+        return generated
 
     def _parse_file_users(self, file_path):
         if not os.path.exists(file_path):
